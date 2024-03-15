@@ -12,3 +12,22 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Issue {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255) // ограничиваем длину в 255 символов (по умолчанию 191)
+  description String   @db.Text // Определяем тип поля как "текст" (очень длинный)
+  status      Status   @default(OPEN)
+  createdAt   DateTime @default(now())
+  // @updatedAt - значение, которое движок БД будет подставлять автоматически (дату последнего обновления записи)
+  updatedAt   DateTime @updatedAt
+}
+
+// По соглашению перечисления должны быть заглавными буквами, каждое на отдельной строке.
+// Перечисления (enum) поддерживаются не всеми движками БД. Например, SQLite и Microsoft SQL Server
+// не поддерживают enum.
+enum Status {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
