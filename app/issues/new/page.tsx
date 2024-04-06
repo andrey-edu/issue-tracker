@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import dynamic from 'next/dynamic'
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
@@ -9,13 +9,21 @@ import "easymde/dist/easymde.min.css";
 
 import { useForm, Controller } from "react-hook-form";
 
-interface IssueForm {
-  title: string,
-  description: string
-}
+import axios from 'axios';
+import { useRouter } from 'next/navigation';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createIssueSchema } from '@/app/validation-schemas';
+import { IssueForm } from '@/app/validation-schemas';
+import ErrorMessage from '@/app/components/error-message/error-message';
+
 
 const NewIssuePage = () => {
-  const {register, control, handleSubmit} = useForm<IssueForm>();
+  const {register, control, handleSubmit, formState: { errors }} = useForm<IssueForm>({
+    resolver: zodResolver(createIssueSchema)
+  });
+
+  const [error, setError] = useState("");
 
   const mdeOptions = useMemo(() => {
     return {
@@ -24,18 +32,33 @@ const NewIssuePage = () => {
     };
   }, []);
 
+  const router = useRouter();
+
   return (
     <form
       className="max-w-xl space-y-5 flex flex-col gap-y-5"
-      onSubmit={handleSubmit((data) => {
-        console.log(data)
+      onSubmit={handleSubmit(async (data) => {
+        try {
+          await axios.post("/api/issues", data);
+          router.push("/issues");
+        } catch (error) {
+          setError("Unexpected Error!");
+        }
       })}
     >
+      { error &&
+        <div role="alert" className="alert alert-error">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>{error}</span>
+        </div>
+      }
       <input
         type="text"
         placeholder="Title"
         {...register("title")}
-        className="input input-bordered w-full" />
+        className="input input-bordered w-full"
+      />
+      <ErrorMessage>{errors.title?.message}</ErrorMessage>
 
       <Controller
         name="description"
@@ -52,6 +75,7 @@ const NewIssuePage = () => {
           </SimpleMDE>
         }
       />
+      <ErrorMessage>{errors.description?.message}</ErrorMessage>
 
       <button type="submit" className="btn btn-primary max-w-fit">Submit New Issue</button>
 
